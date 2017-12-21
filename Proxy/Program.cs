@@ -10,49 +10,53 @@ namespace Proxy
     {
         public static readonly object SyncLock = new object();
 
-        private readonly Socket listener;
-        private readonly ManualResetEvent allDone;
+        private readonly Socket m_listener;
+        private readonly ManualResetEvent m_allDone;
 
-        private int localPort;
-        private string remoteHost;
-        private int remotePort;
+        private readonly int m_localPort;
+        private readonly string m_remoteHost;
+        private readonly int m_remotePort;
 
         public Program(string[] args)
         {
-            localPort = Convert.ToInt32(args[0]);
-            remoteHost = args[1];
-            remotePort = Convert.ToInt32(args[2]);
+            m_localPort = Convert.ToInt32(args[0]);
+            m_remoteHost = args[1];
+            m_remotePort = Convert.ToInt32(args[2]);
 
-            listener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-            listener.Bind(new IPEndPoint(IPAddress.Any, localPort));
-            listener.Listen(100);
+            m_listener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            m_listener.Bind(new IPEndPoint(IPAddress.Any, m_localPort));
+            m_listener.Listen(100);
 
-            allDone = new ManualResetEvent(false);
+            m_allDone = new ManualResetEvent(false);
 
-            Console.Title = string.Concat("TcpProxy : ", remoteHost, ':', remotePort);
-            Program.Log($"Listening on port {localPort} for connections");
+            Console.Title = string.Concat("TcpProxy : ", m_remoteHost, ':', m_remotePort);
+            Program.Log($"Listening on port {m_localPort} for connections");
         }
 
         public void Loop()
         {
             while (true)
             {
-                allDone.Reset();
-                listener.BeginAccept(iar =>
-                {
-                    allDone.Set();
+                m_allDone.Reset();
 
+                m_listener.BeginAccept(iar =>
+                {
                     try
                     {
-                        var socket = listener.EndAccept(iar);
-                        var redirector = new Redirector(socket, remoteHost, remotePort);
+                        var socket = m_listener.EndAccept(iar);
+                        var redirector = new Redirector(socket, m_remoteHost, m_remotePort);
                     }
                     catch (SocketException se)
                     {
                         Program.Log($"Accept failed with {se.ErrorCode}", ConsoleColor.Red);
                     }
+                    finally
+                    {
+                        m_allDone.Set();
+                    }
                 }, null);
-                allDone.WaitOne();
+
+                m_allDone.WaitOne();
             }
         }
 
