@@ -32,7 +32,7 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <PropertyGroup>
-    <StartupObject>TcpProxy.Program</StartupObject>
+    <StartupObject>Proxy.Program</StartupObject>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />

@@ -24,7 +24,7 @@ namespace Proxy
             m_buffer = BufferPool.Get();
             m_connected = 0;
         }
-
+        
         public void Receive()
         {
             if (!Connected) { return; }
@@ -48,9 +48,12 @@ namespace Proxy
             if (outBeginError != SocketError.Success)
                 Dispose();
         }   
-        public void Send(byte[] buffer, int length)
+        public void Send(byte[] data,int start, int length)
         {
             if (!Connected) { return; }
+
+            var buffer = BufferPool.Get();
+            Buffer.BlockCopy(data, start, buffer, 0, length);
 
             m_socket.BeginSend(buffer, 0, length, SocketFlags.None,out var outBeginError, iar =>
             {
@@ -62,12 +65,14 @@ namespace Proxy
                 {
                     Dispose();
                 }
+
+                BufferPool.Put(buffer);
+
             }, null);
 
             if (outBeginError != SocketError.Success)
                 Dispose();
         }
-
         public void Dispose()
         {
             if (Interlocked.CompareExchange(ref m_connected, 1, 0) == 0)
@@ -83,7 +88,7 @@ namespace Proxy
                 OnDisconnected = null;
             }
         }
-
+        
         private static string SetSockOpt(Socket socket)
         {
             if (socket != null)

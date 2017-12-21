@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Net.Sockets;
+using System.Text;
 using System.Threading;
 
 namespace Proxy
@@ -22,7 +23,9 @@ namespace Proxy
                 OnDataReceived = (buffer, length) =>
                 {
                     if (Alive)
-                        m_server.Send(buffer, length);
+                        m_server.Send(buffer,0, length);
+
+                    Program.Log("[Send] " + Encoding.ASCII.GetString(buffer, 0, length));
 
                     m_client.Receive();
                 },
@@ -46,7 +49,9 @@ namespace Proxy
                         OnDataReceived = (buffer, length) =>
                         {
                             if (Alive)
-                                m_client.Send(buffer, length);
+                                m_client.Send(buffer,0, length);
+
+                            Program.Log("[Recv] " + Encoding.ASCII.GetString(buffer,0,length));
 
                             m_server.Receive();
                         },

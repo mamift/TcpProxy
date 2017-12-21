@@ -72,6 +72,7 @@ namespace Proxy
             {
                 Console.ForegroundColor = ConsoleColor.Gray;
                 Console.Write("[{0}] ", DateTime.Now);
+
                 Console.ForegroundColor = color;
                 Console.WriteLine(message);
             }
