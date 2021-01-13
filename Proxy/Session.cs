@@ -6,23 +6,23 @@ namespace Proxy
 {
     internal sealed class Session : IDisposable
     {
-        private readonly string m_name;
-        private readonly Socket m_socket;
-        private readonly byte[] m_buffer;
-        private int m_connected;
+        private readonly Socket _socket;
+        private readonly byte[] _buffer;
+        private int _connected;
 
-        public string RemoteEndPoint => m_name;
-        public bool Connected => m_connected == 0;
+        public string RemoteEndPoint { get; }
+
+        public bool Connected => _connected == 0;
 
         public Action<byte[], int> OnDataReceived { get; set; }
         public Action OnDisconnected { get; set; }
 
         public Session(Socket socket)
         {
-            m_name = SetSockOpt(socket);
-            m_socket = socket;
-            m_buffer = BufferPool.Get();
-            m_connected = 0;
+            RemoteEndPoint = SetSockOpt(socket);
+            _socket = socket;
+            _buffer = BufferPool.Get();
+            _connected = 0;
         }
 
         public void Receive()
@@ -31,18 +31,18 @@ namespace Proxy
                 return;
             }
 
-            m_socket.BeginReceive(m_buffer, 0, m_buffer.Length, SocketFlags.None, out var outBeginError, iar => {
+            _socket.BeginReceive(_buffer, 0, _buffer.Length, SocketFlags.None, out var outBeginError, iar => {
                 if (!Connected) {
                     return;
                 }
 
-                int size = m_socket.EndReceive(iar, out var outEndError);
+                int size = _socket.EndReceive(iar, out var outEndError);
 
                 if (size == 0 || outEndError != SocketError.Success) {
                     Dispose();
                 }
                 else {
-                    OnDataReceived?.Invoke(m_buffer, size);
+                    OnDataReceived?.Invoke(_buffer, size);
                 }
             }, null);
 
@@ -59,12 +59,12 @@ namespace Proxy
             var buffer = BufferPool.Get();
             Buffer.BlockCopy(data, start, buffer, 0, length);
 
-            m_socket.BeginSend(buffer, 0, length, SocketFlags.None, out var outBeginError, iar => {
+            _socket.BeginSend(buffer, 0, length, SocketFlags.None, out var outBeginError, iar => {
                 if (!Connected) {
                     return;
                 }
 
-                int size = m_socket.EndSend(iar, out var outEndError);
+                int size = _socket.EndSend(iar, out var outEndError);
 
                 if (size == 0 || outEndError != SocketError.Success) {
                     Dispose();
@@ -79,11 +79,11 @@ namespace Proxy
 
         public void Dispose()
         {
-            if (Interlocked.CompareExchange(ref m_connected, 1, 0) == 0) {
-                m_socket.Shutdown(SocketShutdown.Both);
-                m_socket.Close();
+            if (Interlocked.CompareExchange(ref _connected, 1, 0) == 0) {
+                _socket.Shutdown(SocketShutdown.Both);
+                _socket.Close();
 
-                BufferPool.Put(m_buffer);
+                BufferPool.Put(_buffer);
 
                 OnDisconnected?.Invoke();
 

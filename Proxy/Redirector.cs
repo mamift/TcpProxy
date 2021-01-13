@@ -7,32 +7,35 @@ namespace Proxy
 {
     internal sealed class Redirector : IDisposable
     {
-        private readonly string m_name;
-        private readonly Session m_client;
-        private Session m_server;
-        private int m_alive;
+        private readonly bool _noLogOutput;
+        private readonly string _name;
+        private readonly Session _client;
+        private Session _server;
+        private int _alive;
 
-        public bool Alive => m_alive == 0;
+        public bool Alive => _alive == 0;
 
-        public Redirector(Socket client, string ip, int port)
+        public Redirector(Socket client, string ip, int port, bool noLogOutput)
         {
-            m_alive = 0;
+            _noLogOutput = noLogOutput;
+            _alive = 0;
 
-            m_client = new Session(client) {
+            _client = new Session(client) {
                 OnDataReceived = (buffer, length) => {
                     if (Alive)
-                        m_server.Send(buffer, 0, length);
+                        _server.Send(buffer, 0, length);
+                    
+                    if (!_noLogOutput)
+                        Program.Log("[Send] " + Encoding.ASCII.GetString(buffer, 0, length));
 
-                    Program.Log("[Send] " + Encoding.ASCII.GetString(buffer, 0, length));
-
-                    m_client.Receive();
+                    _client.Receive();
                 },
                 OnDisconnected = Dispose
             };
 
-            m_name = m_client.RemoteEndPoint;
+            _name = _client.RemoteEndPoint;
 
-            Program.Log($"({m_name}) Proxy session created ", ConsoleColor.Green);
+            Program.Log($"({_name}) Proxy session created ", ConsoleColor.Green);
 
             var outSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 
@@ -40,23 +43,24 @@ namespace Proxy
                 try {
                     outSocket.EndConnect(iar);
 
-                    m_server = new Session(outSocket) {
+                    _server = new Session(outSocket) {
                         OnDataReceived = (buffer, length) => {
                             if (Alive)
-                                m_client.Send(buffer, 0, length);
+                                _client.Send(buffer, 0, length);
 
-                            Program.Log("[Recv] " + Encoding.ASCII.GetString(buffer, 0, length));
+                            if (!_noLogOutput)
+                                Program.Log("[Recv] " + Encoding.ASCII.GetString(buffer, 0, length));
 
-                            m_server.Receive();
+                            _server.Receive();
                         },
                         OnDisconnected = Dispose
                     };
 
-                    m_server.Receive();
-                    m_client.Receive();
+                    _server.Receive();
+                    _client.Receive();
                 }
                 catch (SocketException se) {
-                    Program.Log($"({m_name}) Connection bridge failed with {se.ErrorCode}", ConsoleColor.Red);
+                    Program.Log($"({_name}) Connection bridge failed with {se.ErrorCode}", ConsoleColor.Red);
                     Dispose();
                 }
             }, outSocket);
@@ -64,10 +68,10 @@ namespace Proxy
 
         public void Dispose()
         {
-            if (Interlocked.CompareExchange(ref m_alive, 1, 0) == 0) {
-                m_client?.Dispose();
-                m_server?.Dispose();
-                Program.Log($"({m_name}) Proxy session ended", ConsoleColor.Cyan);
+            if (Interlocked.CompareExchange(ref _alive, 1, 0) == 0) {
+                _client?.Dispose();
+                _server?.Dispose();
+                Program.Log($"({_name}) Proxy session ended", ConsoleColor.Cyan);
             }
         }
     }

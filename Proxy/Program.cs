@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
@@ -8,50 +9,54 @@ namespace Proxy
 {
     public sealed class Program
     {
+        private const string NologArgumentString = "nolog";
         public static readonly object SyncLock = new object();
 
-        private readonly Socket m_listener;
-        private readonly ManualResetEvent m_allDone;
+        private readonly Socket _listener;
+        private readonly ManualResetEvent _allDone;
 
-        private readonly int m_localPort;
-        private readonly string m_remoteHost;
-        private readonly int m_remotePort;
+        private readonly int _localPort;
+        private readonly string _remoteHost;
+        private readonly int _remotePort;
+
+        private readonly bool _noLogOutput;
 
         public Program(string[] args)
         {
-            m_localPort = Convert.ToInt32(args[0]);
-            m_remoteHost = args[1];
-            m_remotePort = Convert.ToInt32(args[2]);
+            _localPort = Convert.ToInt32(args[0]);
+            _remoteHost = args[1];
+            _remotePort = Convert.ToInt32(args[2]);
+            _noLogOutput = args[3].ToLowerInvariant() == NologArgumentString;
 
-            m_listener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-            m_listener.Bind(new IPEndPoint(IPAddress.Any, m_localPort));
-            m_listener.Listen(100);
+            _listener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            _listener.Bind(new IPEndPoint(IPAddress.Any, _localPort));
+            _listener.Listen(100);
 
-            m_allDone = new ManualResetEvent(false);
+            _allDone = new ManualResetEvent(false);
 
-            Console.Title = string.Concat("TcpProxy : ", m_remoteHost, ':', m_remotePort);
-            Program.Log($"Listening on port {m_localPort} for connections");
+            Console.Title = string.Concat("TcpProxy : ", _remoteHost, ':', _remotePort);
+            Program.Log($"Listening on port {_localPort} for connections");
         }
 
         public void Loop()
         {
             while (true) {
-                m_allDone.Reset();
+                _allDone.Reset();
 
-                m_listener.BeginAccept(iar => {
+                _listener.BeginAccept(iar => {
                     try {
-                        var socket = m_listener.EndAccept(iar);
-                        var redirector = new Redirector(socket, m_remoteHost, m_remotePort);
+                        var socket = _listener.EndAccept(iar);
+                        var redirector = new Redirector(socket, _remoteHost, _remotePort, _noLogOutput);
                     }
                     catch (SocketException se) {
                         Program.Log($"Accept failed with {se.ErrorCode}", ConsoleColor.Red);
                     }
                     finally {
-                        m_allDone.Set();
+                        _allDone.Set();
                     }
                 }, null);
 
-                m_allDone.WaitOne();
+                _allDone.WaitOne();
             }
         }
 
@@ -63,7 +68,12 @@ namespace Proxy
             if (args.Length < 3)
                 Program.Log("Usage : TcpProxy <local port> <remote host> <remote port>");
             else
+            {
+                if (args.Length == 3) {
+                    args = args.Concat(new[] {NologArgumentString}).ToArray();
+                }
                 new Program(args).Loop();
+            }
         }
 
         public static void Log(string message, ConsoleColor color = ConsoleColor.White)
