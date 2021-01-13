@@ -18,12 +18,10 @@ namespace Proxy
         {
             m_alive = 0;
 
-            m_client = new Session(client)
-            {
-                OnDataReceived = (buffer, length) =>
-                {
+            m_client = new Session(client) {
+                OnDataReceived = (buffer, length) => {
                     if (Alive)
-                        m_server.Send(buffer,0, length);
+                        m_server.Send(buffer, 0, length);
 
                     Program.Log("[Send] " + Encoding.ASCII.GetString(buffer, 0, length));
 
@@ -38,20 +36,16 @@ namespace Proxy
 
             var outSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 
-            outSocket.BeginConnect(ip, port, iar =>
-            {
-                try
-                {
+            outSocket.BeginConnect(ip, port, iar => {
+                try {
                     outSocket.EndConnect(iar);
 
-                    m_server = new Session(outSocket)
-                    {
-                        OnDataReceived = (buffer, length) =>
-                        {
+                    m_server = new Session(outSocket) {
+                        OnDataReceived = (buffer, length) => {
                             if (Alive)
-                                m_client.Send(buffer,0, length);
+                                m_client.Send(buffer, 0, length);
 
-                            Program.Log("[Recv] " + Encoding.ASCII.GetString(buffer,0,length));
+                            Program.Log("[Recv] " + Encoding.ASCII.GetString(buffer, 0, length));
 
                             m_server.Receive();
                         },
@@ -61,8 +55,7 @@ namespace Proxy
                     m_server.Receive();
                     m_client.Receive();
                 }
-                catch (SocketException se)
-                {
+                catch (SocketException se) {
                     Program.Log($"({m_name}) Connection bridge failed with {se.ErrorCode}", ConsoleColor.Red);
                     Dispose();
                 }
@@ -71,8 +64,7 @@ namespace Proxy
 
         public void Dispose()
         {
-            if (Interlocked.CompareExchange(ref m_alive, 1, 0) == 0)
-            {
+            if (Interlocked.CompareExchange(ref m_alive, 1, 0) == 0) {
                 m_client?.Dispose();
                 m_server?.Dispose();
                 Program.Log($"({m_name}) Proxy session ended", ConsoleColor.Cyan);

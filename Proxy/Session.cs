@@ -24,59 +24,62 @@ namespace Proxy
             m_buffer = BufferPool.Get();
             m_connected = 0;
         }
-        
+
         public void Receive()
         {
-            if (!Connected) { return; }
+            if (!Connected) {
+                return;
+            }
 
-            m_socket.BeginReceive(m_buffer, 0, m_buffer.Length, SocketFlags.None, out var outBeginError, iar =>
-            {
-                if (!Connected) { return; }
+            m_socket.BeginReceive(m_buffer, 0, m_buffer.Length, SocketFlags.None, out var outBeginError, iar => {
+                if (!Connected) {
+                    return;
+                }
 
                 int size = m_socket.EndReceive(iar, out var outEndError);
 
-                if (size == 0 || outEndError != SocketError.Success)
-                {
+                if (size == 0 || outEndError != SocketError.Success) {
                     Dispose();
                 }
-                else
-                {
+                else {
                     OnDataReceived?.Invoke(m_buffer, size);
                 }
             }, null);
 
             if (outBeginError != SocketError.Success)
                 Dispose();
-        }   
-        public void Send(byte[] data,int start, int length)
+        }
+
+        public void Send(byte[] data, int start, int length)
         {
-            if (!Connected) { return; }
+            if (!Connected) {
+                return;
+            }
 
             var buffer = BufferPool.Get();
             Buffer.BlockCopy(data, start, buffer, 0, length);
 
-            m_socket.BeginSend(buffer, 0, length, SocketFlags.None,out var outBeginError, iar =>
-            {
-                if (!Connected) { return; }
+            m_socket.BeginSend(buffer, 0, length, SocketFlags.None, out var outBeginError, iar => {
+                if (!Connected) {
+                    return;
+                }
 
                 int size = m_socket.EndSend(iar, out var outEndError);
 
-                if (size == 0 || outEndError != SocketError.Success)
-                {
+                if (size == 0 || outEndError != SocketError.Success) {
                     Dispose();
                 }
 
                 BufferPool.Put(buffer);
-
             }, null);
 
             if (outBeginError != SocketError.Success)
                 Dispose();
         }
+
         public void Dispose()
         {
-            if (Interlocked.CompareExchange(ref m_connected, 1, 0) == 0)
-            {
+            if (Interlocked.CompareExchange(ref m_connected, 1, 0) == 0) {
                 m_socket.Shutdown(SocketShutdown.Both);
                 m_socket.Close();
 
@@ -88,13 +91,11 @@ namespace Proxy
                 OnDisconnected = null;
             }
         }
-        
+
         private static string SetSockOpt(Socket socket)
         {
-            if (socket != null)
-            {
-                try
-                {
+            if (socket != null) {
+                try {
                     var temp = socket.RemoteEndPoint.ToString();
 
                     socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
@@ -102,7 +103,8 @@ namespace Proxy
 
                     return temp;
                 }
-                catch (SocketException) { /*Socket No Longer Connected*/ }
+                catch (SocketException) { /*Socket No Longer Connected*/
+                }
             }
 
             return "Error";

@@ -35,23 +35,18 @@ namespace Proxy
 
         public void Loop()
         {
-            while (true)
-            {
+            while (true) {
                 m_allDone.Reset();
 
-                m_listener.BeginAccept(iar =>
-                {
-                    try
-                    {
+                m_listener.BeginAccept(iar => {
+                    try {
                         var socket = m_listener.EndAccept(iar);
                         var redirector = new Redirector(socket, m_remoteHost, m_remotePort);
                     }
-                    catch (SocketException se)
-                    {
+                    catch (SocketException se) {
                         Program.Log($"Accept failed with {se.ErrorCode}", ConsoleColor.Red);
                     }
-                    finally
-                    {
+                    finally {
                         m_allDone.Set();
                     }
                 }, null);
@@ -62,7 +57,8 @@ namespace Proxy
 
         public static void Main(string[] args)
         {
-            AppDomain.CurrentDomain.UnhandledException += (s, e) => File.WriteAllText("Exceptions.txt", e.ExceptionObject.ToString());
+            AppDomain.CurrentDomain.UnhandledException +=
+                (s, e) => File.WriteAllText("Exceptions.txt", e.ExceptionObject.ToString());
 
             if (args.Length < 3)
                 Program.Log("Usage : TcpProxy <local port> <remote host> <remote port>");
@@ -70,10 +66,9 @@ namespace Proxy
                 new Program(args).Loop();
         }
 
-        public static void Log(string message,ConsoleColor color = ConsoleColor.White)
+        public static void Log(string message, ConsoleColor color = ConsoleColor.White)
         {
-            lock (SyncLock)
-            {
+            lock (SyncLock) {
                 Console.ForegroundColor = ConsoleColor.Gray;
                 Console.Write("[{0}] ", DateTime.Now);
 
